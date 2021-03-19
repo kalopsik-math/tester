@@ -334,7 +334,7 @@ def __check_function__(result, expected):
 
             l = self.lines[i]
 
-            input_command = False
+            #input_command = False
             
             
             # Get the list of input variable names in order to join them
@@ -353,7 +353,12 @@ def __check_function__(result, expected):
                 match_name = (match.group(0).split('=')[0]).strip()
                 k = v.index(match_name)
                 indatum = inout[0][k]
-                f.write('input = lambda s: str({})\n'.format(indatum))
+                #f.write('input = lambda s: str({})\n'.format(indatum))
+                f.write(f'''
+def input(*args, **kargs):
+    return str({indatum})
+
+''')
                 f.write(l +"\n")
             
             elif re.match(".*input.*", l):
@@ -509,13 +514,15 @@ def check(output,correct_output):
                     input_variables, resultcode, checkcode, func)
 
     tester.runTests()
-    
-    if tester.allCorrect():
-        print( "****** The program has run correctly in all cases.")
-        sys.exit(0)
-    else:
-        print("****** The program has run in error in some cases.")
-        sys.exit(1)
+
+    grade = (len(inputs) - tester.errors)/len(inputs)*10
+    print(f"Your grade is {grade}")
+    # if tester.allCorrect():
+        # print( "****** The program has run correctly in all cases.")
+        # sys.exit(0)
+    # else:
+        # print("****** The program has run in error in some cases.")
+        # sys.exit(1)
 
 
 if __name__ == '__main__':
