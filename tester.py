@@ -32,255 +32,15 @@ class Tester:
 
     def addDecoratorCode(self, f):
         f.write("# start decorator code\n")
-        f.write('''class ObjectProxy:
-    __slots__ = ('__wrapped__', '__recursive__', '__admin__') 
-    def __init__(self, wrapped, recursive, admin):
-        object.__setattr__(self, '__wrapped__', wrapped)
-        object.__setattr__(self, '__recursive__', recursive)
-        object.__setattr__(self, '__admin__', admin)
-        try:
-            object.__setattr__(self, '__qualname__', wrapped.__qualname__)
-        except AttributeError:
-            pass
-    @property
-    def __name__(self):
-        return self.__wrapped__.__name__
-    @__name__.setter
-    def __name__(self, value):
-        self.__wrapped__.__name__ = value
-    @property
-    def __class__(self):
-        return self.__wrapped__.__class__
-    @__class__.setter
-    def __class__(self, value):
-        self.__wrapped__.__class__ = value
-    @property
-    def __annotations__(self):
-        return self.__wrapped__.__annotations__
-    @__annotations__.setter
-    def __annotations__(self, value):
-        self.__wrapped__.__annotations__ = value
-    def __dir__(self):
-        return dir(self.__wrapped__)
-    def __str__(self):
-        return str(self.__wrapped__)
-    if sys.version_info[0] == 3:
-        def __bytes__(self):
-            return bytes(self.__wrapped__)
-    def __repr__(self):
-        return '<{} at 0x{:x} for {} at 0x{:x}>'.format(
-                type(self).__name__, id(self),
-                type(self.__wrapped__).__name__,
-                id(self.__wrapped__))
-    def __reversed__(self):
-        return reversed(self.__wrapped__)
-    if sys.version_info[0] == 3:
-        def __round__(self):
-            return round(self.__wrapped__)
-    def __lt__(self, other):
-        return self.__wrapped__ < other
-    def __le__(self, other):
-        return self.__wrapped__ <= other
-    def __eq__(self, other):
-        return self.__wrapped__ == other
-    def __ne__(self, other):
-        return self.__wrapped__ != other
-    def __gt__(self, other):
-        return self.__wrapped__ > other
-    def __ge__(self, other):
-        return self.__wrapped__ >= other
-    def __hash__(self):
-        return hash(self.__wrapped__)
-    def __nonzero__(self):
-        return bool(self.__wrapped__)
-    def __bool__(self):
-        return bool(self.__wrapped__)
-    def __setattr__(self, name, value):
-        if name.startswith('_self_'):
-            object.__setattr__(self, name, value)
-        elif name == '__wrapped__':
-            object.__setattr__(self, name, value)
-            try:
-                object.__delattr__(self, '__qualname__')
-            except AttributeError:
-                pass
-            try:
-                object.__setattr__(self, '__qualname__', value.__qualname__)
-            except AttributeError:
-                pass
-        elif name == '__qualname__':
-            setattr(self.__wrapped__, name, value)
-            object.__setattr__(self, name, value)
-        elif hasattr(type(self), name):
-            object.__setattr__(self, name, value)
-        else:
-            setattr(self.__wrapped__, name, value)
-    def __getattr__(self, name):
-        if name == '__wrapped__':
-            raise ValueError('wrapper has not been initialised')
-        return getattr(self.__wrapped__, name)
-    def __delattr__(self, name):
-        if name.startswith('_self_'):
-            object.__delattr__(self, name)
-        elif name == '__wrapped__':
-            raise TypeError('__wrapped__ must be an object')
-        elif name == '__qualname__':
-            object.__delattr__(self, name)
-            delattr(self.__wrapped__, name)
-        elif hasattr(type(self), name):
-            object.__delattr__(self, name)
-        else:
-            delattr(self.__wrapped__, name)
-    def __add__(self, other):
-        return self.__wrapped__ + other
-    def __sub__(self, other):
-        return self.__wrapped__ - other
-    def __mul__(self, other):
-        return self.__wrapped__ * other
-    def __div__(self, other):
-        return operator.div(self.__wrapped__, other)
-    def __truediv__(self, other):
-        return operator.truediv(self.__wrapped__, other)
-    def __floordiv__(self, other):
-        return self.__wrapped__ // other
-    def __mod__(self, other):
-        return self.__wrapped__ % other
-    def __divmod__(self, other):
-        return divmod(self.__wrapped__, other)
-    def __pow__(self, other, *args):
-        return pow(self.__wrapped__, other, *args)
-    def __lshift__(self, other):
-        return self.__wrapped__ << other
-    def __rshift__(self, other):
-        return self.__wrapped__ >> other
-    def __and__(self, other):
-        return self.__wrapped__ & other
-    def __xor__(self, other):
-        return self.__wrapped__ ^ other
-    def __or__(self, other):
-        return self.__wrapped__ | other
-    def __radd__(self, other):
-        return other + self.__wrapped__
-    def __rsub__(self, other):
-        return other - self.__wrapped__
-    def __rmul__(self, other):
-        return other * self.__wrapped__
-    def __rdiv__(self, other):
-        return operator.div(other, self.__wrapped__)
-    def __rtruediv__(self, other):
-        return operator.truediv(other, self.__wrapped__)
-    def __rfloordiv__(self, other):
-        return other // self.__wrapped__
-    def __rmod__(self, other):
-        return other % self.__wrapped__
-    def __rdivmod__(self, other):
-        return divmod(other, self.__wrapped__)
-    def __rpow__(self, other, *args):
-        return pow(other, self.__wrapped__, *args)
-    def __rlshift__(self, other):
-        return other << self.__wrapped__
-    def __rrshift__(self, other):
-        return other >> self.__wrapped__
-    def __rand__(self, other):
-        return other & self.__wrapped__
-    def __rxor__(self, other):
-        return other ^ self.__wrapped__
-    def __ror__(self, other):
-        return other | self.__wrapped__
-    def __iadd__(self, other):
-        self.__wrapped__ += other
-        return self
-    def __isub__(self, other):
-        self.__wrapped__ -= other
-        return self
-    def __imul__(self, other):
-        self.__wrapped__ *= other
-        return self
-    def __idiv__(self, other):
-        self.__wrapped__ = operator.idiv(self.__wrapped__, other)
-        return self
-    def __itruediv__(self, other):
-        self.__wrapped__ = operator.itruediv(self.__wrapped__, other)
-        return self
-    def __ifloordiv__(self, other):
-        self.__wrapped__ //= other
-        return self
-    def __imod__(self, other):
-        self.__wrapped__ %= other
-        return self
-    def __ipow__(self, other):
-        self.__wrapped__ **= other
-        return self
-    def __ilshift__(self, other):
-        self.__wrapped__ <<= other
-        return self
-    def __irshift__(self, other):
-        self.__wrapped__ >>= other
-        return self
-    def __iand__(self, other):
-        self.__wrapped__ &= other
-        return self
-    def __ixor__(self, other):
-        self.__wrapped__ ^= other
-        return self
-    def __ior__(self, other):
-        self.__wrapped__ |= other
-        return self
-    def __neg__(self):
-        return -self.__wrapped__
-    def __pos__(self):
-        return +self.__wrapped__
-    def __abs__(self):
-        return abs(self.__wrapped__)
-    def __invert__(self):
-        return ~self.__wrapped__
-    def __int__(self):
-        return int(self.__wrapped__)
-    def __long__(self):
-        return long(self.__wrapped__)
-    def __float__(self):
-        return float(self.__wrapped__)
-    def __complex__(self):
-        return complex(self.__wrapped__)
-    def __oct__(self):
-        return oct(self.__wrapped__)
-    def __hex__(self):
-        return hex(self.__wrapped__)
-    def __index__(self):
-        return operator.index(self.__wrapped__)
-    def __len__(self):
-        return len(self.__wrapped__)
-    def __contains__(self, value):
-        return value in self.__wrapped__
-    def __getitem__(self, key):
-        return self.__wrapped__[key]
-    def __setitem__(self, key, value):
-        self.__wrapped__[key] = value
-    def __delitem__(self, key):
-        del self.__wrapped__[key]
-    def __getslice__(self, i, j):
-        return self.__wrapped__[i:j]
-    def __setslice__(self, i, j, value):
-        self.__wrapped__[i:j] = value
-    def __delslice__(self, i, j):
-        del self.__wrapped__[i:j]
-    def __enter__(self):
-        return self.__wrapped__.__enter__()
-    def __exit__(self, *args, **kwargs):
-        return self.__wrapped__.__exit__(*args, **kwargs)
-    def __iter__(self):
-        return iter(self.__wrapped__)
-    def __copy__(self):
-        raise NotImplementedError('object proxy must define __copy__()')
-    def __deepcopy__(self, memo):
-        raise NotImplementedError('object proxy must define __deepcopy__()')
-    def __reduce__(self):
-        raise NotImplementedError('object proxy must define __reduce_ex__()')
-    def __reduce_ex__(self, protocol):
-        raise NotImplementedError('object proxy must define __reduce_ex__()')
+        f.write('''
+class MyT(tuple):
+    def __eq__(self,other):
+        return (other == self[0]) if len(self) > 0 else Flase
+
 # Main decorator
 import functools
 def __decorator__(admin_info):
+
     def real_decorator(func):
         counter = 0
         recursive = False
@@ -292,18 +52,24 @@ def __decorator__(admin_info):
                 counter += 1
                 result = func(*args, **kwargs)
                 if counter == 1: #non recursive call, decorate with admin info
-                    result = ObjectProxy(result, recursive, admin_info)
+                    result = MyT((result, recursive, admin_info))
+                    result.__setattr__('recursive', recursive)
+                    result.__setattr__('admin_info', admin_info)
             finally:
                 if counter != 1:
                     recursive = True
                 counter -= 1
             return result
         return wrapper
+        
     return real_decorator
-def __check_recursive__(result, expected):
-    return hasattr(result, '__recursive__') and result.__recursive__ == expected
-def __check_function__(result, expected):
-    return hasattr(result, '__admin__') and result.__admin__ == expected
+    
+def check_recursive(result, expected):
+    return hasattr(result, 'recursive') and result.recursive == expected
+
+def chec_function(result, expected):
+    return hasattr(result, 'admin_info') and result.admin_info == expected
+
 ''')
         f.write("# end decorator code\n")
 
@@ -334,17 +100,23 @@ def __check_function__(result, expected):
             # within regular expression below
             unzip = lambda v: zip(*v)
             v = list(list(unzip(self.input_variables))[0])
+            print(v)
             
             # for future maybe
             #v = self.input_variables.keys()
 
             regexp = '('+'|'.join(v)+").*input.*"
+            print(regexp)
             match = re.match(regexp, l)
             if re.search("^\s*#", l):
                 continue
             if match:
                 match_name = (match.group(0).split('=')[0]).strip()
+                print(f"match_name: {match_name}")
                 k = v.index(match_name)
+                print(f"k: {k}")
+                print(f"inout: {inout}")
+                print(f"inout[0][0]: {inout[0][0]}")
                 indatum = inout[0][k]
                 f.write('input = lambda s: str({})\n'.format(indatum))
                 f.write(l +"\n")
@@ -381,11 +153,11 @@ def __check_function__(result, expected):
         s.append('    print("ERROR on input {input}\\nOutput produced is \", output, \"\\nShould be {correct_output}\")')
         s.append('    sys.exit(1)')
         if self.func:
-            s.append("elif not (__check_function__(output, '{}')):".format(self.func[0]))
+            s.append("elif not (check_function(output, '{}')):".format(self.func[0]))
             s.append('    print("ERROR on input {input}\\nThe result should be calculated by calling function \'' + self.func[0] + '\'")')
             s.append('    sys.exit(1)')
             if self.func[1] != None:
-                s.append("elif not (__check_recursive__(output, {})):".format(self.func[1]))
+                s.append("elif not (check_recursive(output, {})):".format(self.func[1]))
                 s.append('    print("ERROR on input {input}\\nFunction \'' + self.func[0] + '\' should ' + ("" if self.func[1] else "not ") + 'be recursive")')
                 s.append('    sys.exit(1)')
         s.append("else:")
@@ -461,22 +233,19 @@ def main():
         userfilename = sys.argv[1]
 
     inputs = [
-    [10,10],
-    [1,11],
-    [15,10],
-	[21,10]
+    '0',
+    '10',
+    '30',
     ]
     correct_outputs = [
-    "'ae'",
-    "'lo'",
-    "'ae'",
-    "'hi'"
+    "1",
+    "3628800",
+    "265252859812191058636308480000000"
     ]
 
     # names of input variables
     input_variables = [
-        ('x','float'),
-        ('y','float')
+        ('N','int')
     ]
 
     #func = None            # no function needed
@@ -484,9 +253,7 @@ def main():
     #func = ('name', False) # there should be a non recursive function 'name'
     #func = ('name', None)  # there should be a function 'name' (either recursive or not)
     
-    # function to call ('name', isRecursive), None if no function should be called
-    #func = ('pow2', True)
-    func = None
+    func = ('myfact', True)
 
     # how to get result
     resultcode = ['output=result']
