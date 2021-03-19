@@ -1,13 +1,6 @@
 # -*- coding: utf-8 -*-
 
 
-####   ΜΗ ΠΕΙΡΑΖΕΤΕ ΑΥΤΟ ΤΟ ΑΡΧΕΙΟ ####
-
-####
-#### Πρόγραμμα ελέγχου του προγράμματος που γράφουν οι φοιτητές. Μη πειράζετε αυτό το πρόγραμμα.
-#### Γράφετε το πρόγραμμά σας στο αρχείο E04-07-user.py και μόνο εκεί.
-####
-
 import re
 import sys
 import subprocess
@@ -460,8 +453,8 @@ def __check_function__(result, expected):
 
 def main():
 
-    #problemName = __file__
-    #userfilename = problemName + "-user.py"
+    # If there is no command line argument the user file name
+    # is that of tester with the word "tester" replaced by "user".
     userfilename = __file__.replace("tester", "user")
 
     if len(sys.argv) > 1:
@@ -498,10 +491,10 @@ def main():
     # how to get result
     resultcode = ['output=result']
     
-    # how to verify (False if it's OK)
-    # checkcode = 'output == {correct_output}'
+    # How to verify that result is correct
     checkcode='''
 def check(output,correct_output):
+    True
     return output == correct_output
 '''
 
@@ -514,8 +507,9 @@ def check(output,correct_output):
         print( "****** The program has run correctly in all cases.")
         sys.exit(0)
     else:
-        print("****** The program has run in error in some cases.")
-        sys.exit(1)
+        print(f"****** The program has run in error in {tester.errors} cases.")
+        print(f"Your grade is {(len(correct_outputs)-tester.errors)*10/tester.errors}.")
+        sys.exit(tester.errors)
 
 
 if __name__ == '__main__':
