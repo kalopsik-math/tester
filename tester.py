@@ -475,7 +475,7 @@ def main():
         [30]
     ]
     
-    
+    # This is a list of correct outputs wrapped by quotas.
     correct_outputs = [
     "1",
     "3628800",
