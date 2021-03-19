@@ -470,21 +470,22 @@ def main():
     # An input is a list of inpur values.
     # Here we define a list of inputs.
     inputs = [
-        [0],
-        [10],
-        [30]
+        [1,1],
+        [10,20],
+        [30,40]
     ]
     
     # This is a list of correct outputs wrapped by quotas.
     correct_outputs = [
-    "1",
-    "3628800",
-    "265252859812191058636308480000000"
+    "2",
+    "30",
+    "70"
     ]
 
     # names of input variables
     input_variables = [
-        ('N','int')
+        ('a', 'float'),
+        ('b', 'float')
     ]
 
     #func = None            # no function needed
@@ -492,7 +493,7 @@ def main():
     #func = ('name', False) # there should be a non recursive function 'name'
     #func = ('name', None)  # there should be a function 'name' (either recursive or not)
     
-    func = ('myfact', True)
+    func = ('myadd', None)
 
     # how to get result
     resultcode = ['output=result']
