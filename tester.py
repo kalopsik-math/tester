@@ -472,6 +472,28 @@ def main():
     if len(sys.argv) > 1:
         userfilename = sys.argv[1]
 
+
+    # The new idea is that tester is not given to the students.
+    # So the code is (almost) arbitrary.
+    # We need the user to create a function with specific interface.
+    # So the requirement is that a user must write a function that 
+    # solves a problem and the function must have 
+    # a specific interface:
+    #    - Number of parameters.
+    #    - Type of each parameter.
+    #    - The requested returned value.
+    #
+    # Also the function must be independent of global variables, with
+    # the exception of any libraries needed (e.g. random, numpy, etc)
+    #
+    # The idea is that tester takes all functions to a new file
+    # decorates one by one and runs the decorated function. 
+    # If one of the runs gives the correct answer, then the program is
+    # considered correct for the case.
+    #
+    # So there are no requirements for variable names or inputs etc.
+    # There is only requirement for the main function interface.
+    
     # An input is a list of inpur values.
     # Here we define a list of inputs.
     inputs = [
