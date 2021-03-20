@@ -11,6 +11,7 @@
 import re
 import sys
 import subprocess
+import ast
 import platform
 import random
 import string
@@ -26,9 +27,10 @@ class Tester:
         self.userfilename = userfilename
         self.testerfilename = "__testcode__"
 
-        self.lines = open(self.userfilename, encoding="utf8").readlines()
-        self.firstline = 0
-        self.lastline  = len(self.lines)-1
+        # self.lines = open(self.userfilename, encoding="utf8").readlines()
+        self.usercode = open(self.userfilename, 'r', encoding='utf8').read()
+        # self.firstline = 0
+        # self.lastline  = len(self.lines)-1
 
         self.inout = list(zip(inputs, correct_outputs))
         
@@ -329,54 +331,85 @@ def __check_function__(result, expected):
 
         self.addDecoratorCode(f)
         f.write("# start user code\n")
+
+        # Get import statements from usercode
+        # and insert them in test code file
+        code_tree = ast.parse(self.usercode)
+        for node in ast.walk(code_tree):
+            if isinstance(node, ast.Import) or \
+                isinstance(node, ast.ImportFrom) or \
+                isinstance(node, ast.alias):
+
+                S = ast.get_source_segment(self.usercode, node)
+                if S:
+                    f.write(S)
+                    f.write('\n')
+
+        # Get functions definitions and insert them into file
+        # Also get function names
+        function_names = []
+        for node in ast.walk(code_tree):
+            if isinstance(node, ast.FunctionDef):
+                function_names.append(node.name)
+                S = ast.get_source_segment(self.usercode, node)
+                if S:
+                    f.write(f"@__decorator__('{node.name}')\n")
+                    f.write(S)
+                    f.write('\n')
+
+
         
-        for i in range(self.firstline, self.lastline+1):
-
-            l = self.lines[i]
-
-            #input_command = False
-            
-            
-            # Get the list of input variable names in order to join them
-            # within regular expression below
-            unzip = lambda v: zip(*v)
-            v = list(list(unzip(self.input_variables))[0])
-            
-            # for future maybe
-            #v = self.input_variables.keys()
-
-            regexp = '('+'|'.join(v)+").*input.*"
-            match = re.match(regexp, l)
-            if re.search("^\s*#", l):
-                continue
-            if match:
-                match_name = (match.group(0).split('=')[0]).strip()
-                k = v.index(match_name)
-                indatum = inout[0][k]
-                #f.write('input = lambda s: str({})\n'.format(indatum))
-                f.write(f'''
-def input(*args, **kargs):
-    return str({indatum})
-
-''')
-                f.write(l +"\n")
-            
-            elif re.match(".*input.*", l):
-                rd = ''.join(random.choice(string.digits) for x in range(1000))
-                # rd = ''.join(random.choice(string.printable) for x in range(1000))
-                f.write('input = lambda s: str("{}")\n'.format(rd))
-                f.write(l +"\n")
-            
-            elif re.match(".*exit.*", l):
-                continue
-            
-            elif self.func and re.match('def\s*' + self.func[0] + '.*', l):
-                f.write("@__decorator__('{}')\n".format(self.func[0]))
-                f.write(l +"\n")
-            else:
-                f.write(l +"\n")
+#         for i in range(self.firstline, self.lastline+1):
+#
+#             l = self.lines[i]
+#
+#             #input_command = False
+#
+#
+#             # Get the list of input variable names in order to join them
+#             # within regular expression below
+#             unzip = lambda v: zip(*v)
+#             v = list(list(unzip(self.input_variables))[0])
+#
+#             # for future maybe
+#             #v = self.input_variables.keys()
+#
+#             regexp = '('+'|'.join(v)+").*input.*"
+#             match = re.match(regexp, l)
+#             if re.search("^\s*#", l):
+#                 continue
+#             if match:
+#                 match_name = (match.group(0).split('=')[0]).strip()
+#                 k = v.index(match_name)
+#                 indatum = inout[0][k]
+#                 #f.write('input = lambda s: str({})\n'.format(indatum))
+#                 f.write(f'''
+# def input(*args, **kargs):
+#     return str({indatum})
+#
+# ''')
+#                 f.write(l +"\n")
+#
+#             elif re.match(".*input.*", l):
+#                 rd = ''.join(random.choice(string.digits) for x in range(1000))
+#                 # rd = ''.join(random.choice(string.printable) for x in range(1000))
+#                 f.write('input = lambda s: str("{}")\n'.format(rd))
+#                 f.write(l +"\n")
+#
+#             elif re.match(".*exit.*", l):
+#                 continue
+#
+#             elif self.func and re.match('def\s*' + self.func[0] + '.*', l):
+#                 f.write("@__decorator__('{}')\n".format(self.func[0]))
+#                 f.write(l +"\n")
+#             else:
+#                 f.write(l +"\n")
 
         f.write("# end user code\n")
+        # f.write(f"{str(inout[0][0])}, {str(inout[0][1])}")
+        if function_names:
+            f.write(f"result = {function_names[0]}({inout[0][0]}, {inout[0][1]})")
+            f.write('\n')
         s = self.timeOutCode(self.resultcode)
         s = s + self.testCode(self.checkcode)
         additional_code = '\n'.join(s)
@@ -497,9 +530,9 @@ def main():
     # An input is a list of inpur values.
     # Here we define a list of inputs.
     inputs = [
-        [1,1],
-        [10,20],
-        [30,40]
+        (1,1),
+        (10,20),
+        (30,40)
     ]
     
     # This is a list of correct outputs wrapped by quotas.
@@ -509,6 +542,7 @@ def main():
     "70"
     ]
 
+    ### This won't be needed anymore
     # names of input variables
     input_variables = [
         ('a', 'float'),
