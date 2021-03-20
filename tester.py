@@ -19,8 +19,7 @@ import string
 
 class Tester:
 
-    def __init__(self, userfilename, inputs, correct_outputs, input_variables, 
-                 resultcode, checkcode, func = None):
+    def __init__(self, userfilename, inout, checkcode, func):
 
         self.errors = 0
 
@@ -32,10 +31,11 @@ class Tester:
         # self.firstline = 0
         # self.lastline  = len(self.lines)-1
 
-        self.inout = list(zip(inputs, correct_outputs))
-        
-        self.input_variables = input_variables
-        self.resultcode = resultcode
+        # self.inout = list(zip(inputs, correct_outputs))
+        self.inout = inout
+
+        # self.input_variables = input_variables
+        # self.resultcode = resultcode
         self.checkcode = checkcode
         self.func = func
 
@@ -337,8 +337,8 @@ def __check_function__(result, expected):
         code_tree = ast.parse(self.usercode)
         for node in ast.walk(code_tree):
             if isinstance(node, ast.Import) or \
-                isinstance(node, ast.ImportFrom) or \
-                isinstance(node, ast.alias):
+                    isinstance(node, ast.ImportFrom) or \
+                    isinstance(node, ast.alias):
 
                 S = ast.get_source_segment(self.usercode, node)
                 if S:
@@ -357,91 +357,55 @@ def __check_function__(result, expected):
                     f.write(S)
                     f.write('\n')
 
-
-        
-#         for i in range(self.firstline, self.lastline+1):
-#
-#             l = self.lines[i]
-#
-#             #input_command = False
-#
-#
-#             # Get the list of input variable names in order to join them
-#             # within regular expression below
-#             unzip = lambda v: zip(*v)
-#             v = list(list(unzip(self.input_variables))[0])
-#
-#             # for future maybe
-#             #v = self.input_variables.keys()
-#
-#             regexp = '('+'|'.join(v)+").*input.*"
-#             match = re.match(regexp, l)
-#             if re.search("^\s*#", l):
-#                 continue
-#             if match:
-#                 match_name = (match.group(0).split('=')[0]).strip()
-#                 k = v.index(match_name)
-#                 indatum = inout[0][k]
-#                 #f.write('input = lambda s: str({})\n'.format(indatum))
-#                 f.write(f'''
-# def input(*args, **kargs):
-#     return str({indatum})
-#
-# ''')
-#                 f.write(l +"\n")
-#
-#             elif re.match(".*input.*", l):
-#                 rd = ''.join(random.choice(string.digits) for x in range(1000))
-#                 # rd = ''.join(random.choice(string.printable) for x in range(1000))
-#                 f.write('input = lambda s: str("{}")\n'.format(rd))
-#                 f.write(l +"\n")
-#
-#             elif re.match(".*exit.*", l):
-#                 continue
-#
-#             elif self.func and re.match('def\s*' + self.func[0] + '.*', l):
-#                 f.write("@__decorator__('{}')\n".format(self.func[0]))
-#                 f.write(l +"\n")
-#             else:
-#                 f.write(l +"\n")
-
         f.write("# end user code\n")
         # f.write(f"{str(inout[0][0])}, {str(inout[0][1])}")
         if function_names:
-            f.write(f"result = {function_names[0]}({inout[0][0]}, {inout[0][1]})")
+            f.write(f"output = {function_names[0]}({inout[0][0]})") #, {inout[0][1]})")
             f.write('\n')
-        s = self.timeOutCode(self.resultcode)
-        s = s + self.testCode(self.checkcode)
+        # s = self.timeOutCode(self.resultcode)
+        # s = s + self.testCode(self.checkcode)
+        s = self.testCode(self.checkcode, function_names[0])
         additional_code = '\n'.join(s)
         f.write(additional_code.format(input=inout[0], correct_output=inout[1]))
 
         return fname
 
-    def testCode(self, checkcode):
+    def testCode(self, checkcode, funcname):
 
         s = []
         s.append(checkcode)
         s.append("if not check(output,{correct_output}):")
         ### s.append("if not ({check}):".format(check=checkcode))
-        s.append('    print("ERROR on input {input}\\nOutput produced is \", output, \"\\nShould be {correct_output}\")')
+        s.append(
+            '    print("ERROR on input {input}\\nOutput produced is \", output, \"\\nShould be {correct_output}\")')
         s.append('    sys.exit(1)')
-        if self.func:
-            s.append("elif not (__check_function__(output, '{}')):".format(self.func[0]))
-            s.append('    print("ERROR on input {input}\\nThe result should be calculated by calling function \'' + self.func[0] + '\'")')
+        if self.func['type'] == 'recursive':
+            s.append("elif not (__check_recursive__(output, True)):")
+            s.append(f'    print("ERROR on input {input}\\nFunction \'{funcname}\' should be recursive")')
             s.append('    sys.exit(1)')
-            if self.func[1] != None:
-                s.append("elif not (__check_recursive__(output, {})):".format(self.func[1]))
-                s.append('    print("ERROR on input {input}\\nFunction \'' + self.func[0] + '\' should ' + ("" if self.func[1] else "not ") + 'be recursive")')
-                s.append('    sys.exit(1)')
+        elif self.func['type'] == 'non-recursive':
+            s.append("elif not (__check_recursive__(output, False)):")
+            s.append(f'    print("ERROR on input {input}\\nFunction \'{funcname}\' should not be recursive")')
+            s.append('    sys.exit(1)')
+        # if self.func:
+        #     s.append("elif not (__check_function__(output, '{}')):".format(self.func[0]))
+        #     s.append('    print("ERROR on input {input}\\nThe result should be calculated by calling function \'' +
+        #              self.func[0] + '\'")')
+        #     s.append('    sys.exit(1)')
+        #     if self.func[1] != None:
+        #         s.append("elif not (__check_recursive__(output, {})):".format(self.func[1]))
+        #         s.append('    print("ERROR on input {input}\\nFunction \'' + self.func[0] + '\' should ' + (
+        #             "" if self.func[1] else "not ") + 'be recursive")')
+        #         s.append('    sys.exit(1)')
         s.append("else:")
         s.append('    print("OK")')
         s.append('    sys.exit(0)')
         return s
-    
+
     def timeOutCode(self, resultcode):
 
         # mycode is a list of strings
-        
+
         s = []
         s.append("import signal")
         s.append("def _signal_handler(signum, frame):")
@@ -449,8 +413,8 @@ def __check_function__(result, expected):
         s.append("\n")
         # Signal alarm is disabled because it works only on linux. 
         # It must be replaced by a threading/timer technique
-        #s.append("if hasattr(signal, 'SIGALARM'):")
-        s.append("if False:") 
+        # s.append("if hasattr(signal, 'SIGALARM'):")
+        s.append("if False:")
         s.append("    signal.signal(signal.SIGALARM, _signal_handler)")
         s.append("    signal.alarm(3) # 3 seconds")
         s.append("    try:")
@@ -464,16 +428,15 @@ def __check_function__(result, expected):
 
         return s
 
-    
     def runTests(self):
 
-        operating_system = platform.system()
-        if operating_system == "Windows":
-            python_command = "python"
-        elif operating_system == "Linux":
-            python_command = "python3"
-        else:
-            python_command = "python3"
+        # operating_system = platform.system()
+        # if operating_system == "Windows":
+        #     python_command = "python"
+        # elif operating_system == "Linux":
+        #     python_command = "python3"
+        # else:
+        #     python_command = "python3"
 
         for i in range(len(self.inout)):
 
@@ -481,7 +444,7 @@ def __check_function__(result, expected):
             print("-------------------Case No %d------------------" % i)
 
             filename = self.makeTestProgram(self.testerfilename + str(i) + ".py", self.inout[i])
-            #exit_status = subprocess.call([python_command, filename])
+            # exit_status = subprocess.call([python_command, filename])
             exit_status = subprocess.call([sys.executable, filename])
 
             if exit_status == 0:
@@ -494,17 +457,16 @@ def __check_function__(result, expected):
 
     def allCorrect(self):
 
-        return not ( self.errors>0 )
+        return not (self.errors > 0)
+
 
 def main():
-
-    #problemName = __file__
-    #userfilename = problemName + "-user.py"
+    # problemName = __file__
+    # userfilename = problemName + "-user.py"
     userfilename = __file__.replace("tester", "user")
 
     if len(sys.argv) > 1:
         userfilename = sys.argv[1]
-
 
     # The new idea is that tester is not given to the students.
     # So the code is (almost) arbitrary.
@@ -526,59 +488,80 @@ def main():
     #
     # So there are no requirements for variable names or inputs etc.
     # There is only requirement for the main function interface.
-    
-    # An input is a list of inpur values.
+
+    # An input is a list of input values.
     # Here we define a list of inputs.
     inputs = [
-        (1,1),
-        (10,20),
-        (30,40)
+        (10,), #(1, 1),
+        (20,), #(10, 20),
+         (25,) #(30, 40)
     ]
-    
+
     # This is a list of correct outputs wrapped by quotas.
     correct_outputs = [
-    "2",
-    "30",
-    "70"
+        "3628800",
+        "2432902008176640000",
+        "15511210043330985984000000"
     ]
+
+    inout = list(zip(inputs, correct_outputs))
+
+    # This could be given like this
+    # inout = [
+    #     ((1,1), "2"),
+    #     ((10,20), "30"),
+    #     ((30,40), "70")
+    # ]
 
     ### This won't be needed anymore
     # names of input variables
-    input_variables = [
-        ('a', 'float'),
-        ('b', 'float')
-    ]
+    # input_variables = [
+    #     ('a', 'float'),
+    #     ('b', 'float')
+    # ]
 
-    #func = None            # no function needed
-    #func = ('name', True)  # there should be a recursive function 'name'
-    #func = ('name', False) # there should be a non recursive function 'name'
-    #func = ('name', None)  # there should be a function 'name' (either recursive or not)
-    
-    func = ('myadd', None)
+    # func = None            # no function needed
+    # func = ('name', True)  # there should be a recursive function 'name'
+    # func = ('name', False) # there should be a non recursive function 'name'
+    # func = ('name', None)  # there should be a function 'name' (either recursive or not)
 
-    # how to get result
-    resultcode = ['output=result']
-    
+    # func = ('myadd', None)
+
+    # Function requirements
+    func = {
+        'type': 'recursive', # possible values: recursive, non-recursive, any
+        'lambda' : False # True if function must be a lambda
+    }
+    #     'recursive': False,   # True if must be recursive
+    #     'non-recursive': False,  # True if must not be recursive
+    #     'while': False, # True if while must be used
+    #     'no-while': False, # True if while must not be used
+    #     'for' : False, # True if for must be used
+    #     'no-for': False # True if for must not be used
+    # }
+
+    # # how to get result
+    # resultcode = ['output=result']
+
     # how to verify (False if it's OK)
     # checkcode = 'output == {correct_output}'
-    checkcode='''
+    checkcode = '''
 def check(output,correct_output):
     return output == correct_output
 '''
 
-    tester = Tester(userfilename, inputs, correct_outputs, 
-                    input_variables, resultcode, checkcode, func)
+    tester = Tester(userfilename, inout, checkcode, func)
 
     tester.runTests()
 
-    grade = (len(inputs) - tester.errors)/len(inputs)*10
+    grade = (len(inputs) - tester.errors) / len(inputs) * 10
     print(f"Your grade is {grade}")
     # if tester.allCorrect():
-        # print( "****** The program has run correctly in all cases.")
-        # sys.exit(0)
+    # print( "****** The program has run correctly in all cases.")
+    # sys.exit(0)
     # else:
-        # print("****** The program has run in error in some cases.")
-        # sys.exit(1)
+    # print("****** The program has run in error in some cases.")
+    # sys.exit(1)
 
 
 if __name__ == '__main__':
