@@ -15,6 +15,7 @@ import ast
 import platform
 import random
 import string
+import time
 
 
 class Tester:
@@ -346,48 +347,54 @@ def __check_function__(result, expected):
                     f.write('\n')
 
         # Get functions definitions and insert them into file
-        # Also get list of tuples of function names with the number of their arguments.
-        function_names = []
+        required_function = {}
         for node in ast.walk(code_tree):
             if isinstance(node, ast.FunctionDef):
-                function_names.append((node.name, len(node.args.args)))
-                S = ast.get_source_segment(self.usercode, node)
-                if S:
-                    f.write(f"@__decorator__('{node.name}')\n")
-                    f.write(S)
-                    f.write('\n')
+                if node.name == self.func['name']:
+                    required_function['name'] = node.name
+                    required_function['num_of_args'] = len(node.args.args)
+                    function_source = ast.get_source_segment(self.usercode, node)
+                    if function_source:
+                        f.write(f"@__decorator__('{node.name}')\n")
+                        f.write(function_source)
+                        f.write('\n')
+                else:
+                    function_source = ast.get_source_segment(self.usercode, node)
+                    if function_source:
+                        f.write(function_source)
+                        f.write('\n')
 
         f.write("# end user code\n")
 
-        s = self.testCode(self.checkcode, function_names, inout)
+        s = self.testCode(self.checkcode, required_function, inout)
         additional_code = '\n'.join(s)
         f.write(additional_code.format(input=inout[0], correct_output=inout[1]))
 
         return fname
 
-    def testCode(self, checkcode, funcnames, inout):
+    def testCode(self, checkcode, reqfunc, inout):
 
         # for the moment we deal only with the first available function
         s = []
-        if not funcnames:
-            s.append('print("ERROR. You must create a function to solve the problem.")')
+        if not reqfunc:
+            s.append(f'print("ERROR. To solve the problem, you must create a function with name {self.func["name"]} with {self.func["num_of_args"]} argumets.")')
             s.append('print("Please read carefully the problem requirements.")')
             s.append('sys.exit(1)')
             return s
-        elif funcnames[0][1] != len(inout[0]):
-            s.append(f'print("ERROR. Function must have exactly {len(inout[0])} arguments.")')
-            s.append(f'print("Your function has {funcnames[0][1]} arguments")')
+        elif reqfunc['num_of_args'] != self.func['num_of_args']:
+            s.append(f'print("ERROR. Function {self.func["name"]} must have exactly {self.func["num_of_args"]} arguments.")')
+            s.append(f'print("Your function has {reqfunc["num_of_args"]} arguments")')
             s.append('print("Please read carefully the problem requirements.")')
             s.append('sys.exit(1)')
             return s
         else:
             # For the moment call the first available function
-            fcall = f"output = {funcnames[0][0]}("
-            for i in range(len(inout[0])):
+            fcall = f"output = {self.func['name']}("
+            for i in range(self.func['num_of_args']):
                 fcall = fcall + f"{inout[0][i]},"
             fcall = fcall[:-1] + ")"  # Remove last semicolon and close parenthesis
-            f.write(fcall)
-            f.write('\n')
+            s.append(fcall)
+            s.append('\n')
 
         s.append(checkcode)
         s.append("if not check(output,{correct_output}):")
@@ -437,21 +444,12 @@ def __check_function__(result, expected):
 
     def runTests(self):
 
-        # operating_system = platform.system()
-        # if operating_system == "Windows":
-        #     python_command = "python"
-        # elif operating_system == "Linux":
-        #     python_command = "python3"
-        # else:
-        #     python_command = "python3"
-
         for i in range(len(self.inout)):
 
             print(' ')
             print("-------------------Case No %d------------------" % i)
 
             filename = self.makeTestProgram(self.testerfilename + str(i) + ".py", self.inout[i])
-            # exit_status = subprocess.call([python_command, filename])
             exit_status = subprocess.call([sys.executable, filename])
 
             if exit_status == 0:
@@ -499,7 +497,7 @@ def main():
     # An input is a list of input values.
     # Here we define a list of inputs.
     inputs = [
-        [1], #(1, 1),
+        [0], #(1, 1),
         [2], #(10, 20),
         [3]  #(30, 40)
     ]
@@ -523,20 +521,15 @@ def main():
     # Function requirements
     func = {
         'name': 'my_factorial',
-        'num_args': 1, # this is equal to len(inout[i][0]) and equal to inputs[i] for i = 1,..., len(inout)
-        'type': 'non-recursive', # possible values: recursive, non-recursive, any
-        'lambda': False # True if function must be a lambda
+        'num_of_args': 1,  # this is equal to len(inout[i][0]) and equal to inputs[i] for i = 1,..., len(inout)
+        'type': 'recursive',  # possible values: recursive, non-recursive, any
+        'lambda': False  # True if function must be a lambda
     }
-    #     'recursive': False,   # True if must be recursive
-    #     'non-recursive': False,  # True if must not be recursive
-    #     'while': False, # True if while must be used
-    #     'no-while': False, # True if while must not be used
-    #     'for' : False, # True if for must be used
-    #     'no-for': False # True if for must not be used
-    # }
 
-    # # how to get result
-    # resultcode = ['output=result']
+    for i in range(len(inout)):
+        if func['num_of_args'] != len(inout[i][0]):
+            print("Tester Error. \nSome input data size do not match function configuration.")
+            raise Exception
 
     # how to verify (False if it's OK)
     # checkcode = 'output == {correct_output}'
@@ -550,7 +543,11 @@ def check(output,correct_output):
     tester.runTests()
 
     grade = (len(inputs) - tester.errors) / len(inputs) * 10
-    print(f"Your grade is {grade}")
+    timestamp = time.strftime("%Y%m%d%H%M%S")
+    grade_file = open(userfilename+'_grade', 'w')
+    grade_file.write(f"{userfilename}:{grade:.1f}\n")
+    grade_file.close()
+    #print(f"Your grade is {grade}")
     # if tester.allCorrect():
     # print( "****** The program has run correctly in all cases.")
     # sys.exit(0)
