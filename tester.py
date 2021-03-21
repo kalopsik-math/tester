@@ -8,14 +8,15 @@
 #### Γράφετε το πρόγραμμά σας στο αρχείο E04-07-user.py και μόνο εκεί.
 ####
 
-import re
+# import re
 import sys
 import subprocess
 import ast
-import platform
-import random
-import string
-import time
+# import platform
+# import random
+# import string
+# import time
+import multiprocessing
 
 
 class Tester:
@@ -450,7 +451,11 @@ def __check_function__(result, expected):
             print("-------------------Case No %d------------------" % i)
 
             filename = self.makeTestProgram(self.testerfilename + str(i) + ".py", self.inout[i])
-            exit_status = subprocess.call([sys.executable, filename])
+            try:
+                exit_status = subprocess.call([sys.executable, filename], timeout=30)
+            except subprocess.TimeoutExpired:
+                print("ERROR. Timeout Expired. Program takes too long.")
+                exit_status = 1
 
             if exit_status == 0:
                 print("---Case No %d: OK" % i)
@@ -522,7 +527,7 @@ def main():
     func = {
         'name': 'my_factorial',
         'num_of_args': 1,  # this is equal to len(inout[i][0]) and equal to inputs[i] for i = 1,..., len(inout)
-        'type': 'recursive',  # possible values: recursive, non-recursive, any
+        'type': 'any',  # possible values: recursive, non-recursive, any
         'lambda': False  # True if function must be a lambda
     }
 
@@ -543,7 +548,7 @@ def check(output,correct_output):
     tester.runTests()
 
     grade = (len(inputs) - tester.errors) / len(inputs) * 10
-    timestamp = time.strftime("%Y%m%d%H%M%S")
+    #timestamp = time.strftime("%Y%m%d%H%M%S")
     grade_file = open(userfilename+'_grade', 'w')
     grade_file.write(f"{userfilename}:{grade:.1f}\n")
     grade_file.close()
@@ -557,4 +562,5 @@ def check(output,correct_output):
 
 
 if __name__ == '__main__':
+
     main()
