@@ -346,11 +346,11 @@ def __check_function__(result, expected):
                     f.write('\n')
 
         # Get functions definitions and insert them into file
-        # Also get function names
+        # Also get list of tuples of function names with the number of their arguments.
         function_names = []
         for node in ast.walk(code_tree):
             if isinstance(node, ast.FunctionDef):
-                function_names.append(node.name)
+                function_names.append((node.name, len(node.args.args)))
                 S = ast.get_source_segment(self.usercode, node)
                 if S:
                     f.write(f"@__decorator__('{node.name}')\n")
@@ -358,21 +358,37 @@ def __check_function__(result, expected):
                     f.write('\n')
 
         f.write("# end user code\n")
-        # f.write(f"{str(inout[0][0])}, {str(inout[0][1])}")
-        if function_names:
-            f.write(f"output = {function_names[0]}({inout[0][0]})") #, {inout[0][1]})")
-            f.write('\n')
-        # s = self.timeOutCode(self.resultcode)
-        # s = s + self.testCode(self.checkcode)
-        s = self.testCode(self.checkcode, function_names[0])
+
+        s = self.testCode(self.checkcode, function_names, inout)
         additional_code = '\n'.join(s)
         f.write(additional_code.format(input=inout[0], correct_output=inout[1]))
 
         return fname
 
-    def testCode(self, checkcode, funcname):
+    def testCode(self, checkcode, funcnames, inout):
 
+        # for the moment we deal only with the first available function
         s = []
+        if not funcnames:
+            s.append('print("ERROR. You must create a function to solve the problem.")')
+            s.append('print("Please read carefully the problem requirements.")')
+            s.append('sys.exit(1)')
+            return s
+        elif funcnames[0][1] != len(inout[0]):
+            s.append(f'print("ERROR. Function must have exactly {len(inout[0])} arguments.")')
+            s.append(f'print("Your function has {funcnames[0][1]} arguments")')
+            s.append('print("Please read carefully the problem requirements.")')
+            s.append('sys.exit(1)')
+            return s
+        else:
+            # For the moment call the first available function
+            fcall = f"output = {funcnames[0][0]}("
+            for i in range(len(inout[0])):
+                fcall = fcall + f"{inout[0][i]},"
+            fcall = fcall[:-1] + ")"  # Remove last semicolon and close parenthesis
+            f.write(fcall)
+            f.write('\n')
+
         s.append(checkcode)
         s.append("if not check(output,{correct_output}):")
         ### s.append("if not ({check}):".format(check=checkcode))
@@ -381,22 +397,13 @@ def __check_function__(result, expected):
         s.append('    sys.exit(1)')
         if self.func['type'] == 'recursive':
             s.append("elif not (__check_recursive__(output, True)):")
-            s.append(f'    print("ERROR on input {input}\\nFunction \'{funcname}\' should be recursive")')
+            s.append(f'    print("ERROR on input {input}\\nThe problem must be solved by a recursive function.\\n")')
+            s.append(f'    print("Please read carefully the problem requirements\\n")')
             s.append('    sys.exit(1)')
         elif self.func['type'] == 'non-recursive':
             s.append("elif not (__check_recursive__(output, False)):")
-            s.append(f'    print("ERROR on input {input}\\nFunction \'{funcname}\' should not be recursive")')
+            s.append(f'    print("ERROR on input {input}\\nThe problem must not be solved by a recursive function.")')
             s.append('    sys.exit(1)')
-        # if self.func:
-        #     s.append("elif not (__check_function__(output, '{}')):".format(self.func[0]))
-        #     s.append('    print("ERROR on input {input}\\nThe result should be calculated by calling function \'' +
-        #              self.func[0] + '\'")')
-        #     s.append('    sys.exit(1)')
-        #     if self.func[1] != None:
-        #         s.append("elif not (__check_recursive__(output, {})):".format(self.func[1]))
-        #         s.append('    print("ERROR on input {input}\\nFunction \'' + self.func[0] + '\' should ' + (
-        #             "" if self.func[1] else "not ") + 'be recursive")')
-        #         s.append('    sys.exit(1)')
         s.append("else:")
         s.append('    print("OK")')
         s.append('    sys.exit(0)')
@@ -492,16 +499,16 @@ def main():
     # An input is a list of input values.
     # Here we define a list of inputs.
     inputs = [
-        (10,), #(1, 1),
-        (20,), #(10, 20),
-         (25,) #(30, 40)
+        [1], #(1, 1),
+        [2], #(10, 20),
+        [3]  #(30, 40)
     ]
 
     # This is a list of correct outputs wrapped by quotas.
     correct_outputs = [
-        "3628800",
-        "2432902008176640000",
-        "15511210043330985984000000"
+        "1",
+        "2",
+        "6"
     ]
 
     inout = list(zip(inputs, correct_outputs))
@@ -513,24 +520,12 @@ def main():
     #     ((30,40), "70")
     # ]
 
-    ### This won't be needed anymore
-    # names of input variables
-    # input_variables = [
-    #     ('a', 'float'),
-    #     ('b', 'float')
-    # ]
-
-    # func = None            # no function needed
-    # func = ('name', True)  # there should be a recursive function 'name'
-    # func = ('name', False) # there should be a non recursive function 'name'
-    # func = ('name', None)  # there should be a function 'name' (either recursive or not)
-
-    # func = ('myadd', None)
-
     # Function requirements
     func = {
-        'type': 'recursive', # possible values: recursive, non-recursive, any
-        'lambda' : False # True if function must be a lambda
+        'name': 'my_factorial',
+        'num_args': 1, # this is equal to len(inout[i][0]) and equal to inputs[i] for i = 1,..., len(inout)
+        'type': 'non-recursive', # possible values: recursive, non-recursive, any
+        'lambda': False # True if function must be a lambda
     }
     #     'recursive': False,   # True if must be recursive
     #     'non-recursive': False,  # True if must not be recursive
